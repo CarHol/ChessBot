@@ -7,13 +7,6 @@ def setup_tables(dbpath):
         remove(dbpath)
     
     with sl.connect(dbpath) as con:
-        # Create a users' table:
-        con.execute("""
-            CREATE TABLE USERS (
-                Id TEXT NOT NULL PRIMARY KEY,
-                DiscordId TEXT
-            );
-        """)
 
         # Create a games table
         con.execute("""
@@ -22,9 +15,7 @@ def setup_tables(dbpath):
                 WhitePlayer TEXT,
                 BlackPlayer TEXT,
                 GameState TEXT NOT NULL,
-                LastMove TEXT NOT NULL,
-                FOREIGN KEY (WhitePlayer) references USERS(Id)
-                FOREIGN KEY (BlackPlayer) references USERS(Id)
+                LastMessageId TEXT NOT NULL UNIQUE
             );
         """)
 
