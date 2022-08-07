@@ -26,6 +26,20 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # Todo: add challenges to db to avoid re-using existing challenges
+
+    # When requesting a challenge:
+    # Parse the message for challenge keyword, challenge mode and opponent tag
+    # Compose a new message:
+    #   "@challenger challenges @opponent, both colors"
+    #   "@challenger challenges @opponent, as white"
+    #   "@challenger challenges @opponent, as black"
+    # Leave the loop and wait for a response
+
+    # When accepting (should ideally be a button)
+    # Check the challenge mode (default is asboth)
+    # If fixed challenge mode, create a new game 
+
     # When creating a new game:
     # Send a placeholder message with content like "Creating game..."
     # Use the message id from that message and create a new row in the db with a fresh game

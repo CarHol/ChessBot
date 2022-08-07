@@ -12,10 +12,20 @@ def setup_tables(dbpath):
         con.execute("""
             CREATE TABLE GAMES (
                 Id TEXT NOT NULL PRIMARY KEY,
-                WhitePlayer TEXT,
-                BlackPlayer TEXT,
+                WhitePlayer TEXT NOT NULL,
+                BlackPlayer TEXT NOT NULL,
                 GameState TEXT NOT NULL,
-                LastMessageId TEXT NOT NULL UNIQUE
+                LastMessageId TEXT NOT NULL UNIQUE,
+                Round INTEGER NOT NULL
+            );
+        """)
+
+        # Create a challenges table
+        con.execute("""
+            CREATE TABLE CHALLENGES (
+                Id TEXT NOT NULL PRIMARY KEY,
+                Challenger TEXT NOT NULL,
+                Opponent TEXT
             );
         """)
 

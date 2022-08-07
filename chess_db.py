@@ -15,8 +15,10 @@ class ChessDB:
 
     def new_game(message_id, white_player, black_player):
         new_game_id = str(uuid.uuid1())
-        new_game_state = chess.Board().fen()
+        new board = chess.Board()
+        new_game_state = new_board.fen()
         self._db.execute("""
-            INSERT INTO GAMES (Id, WhitePlayer, BlackPlayer, GameState, LastMessageId) 
-            values({new_game_id}, {white_player}, {black_player}, {new_game_state}, {message_id})
+            INSERT INTO GAMES (Id, WhitePlayer, BlackPlayer, GameState, LastMessageId, Round) 
+            values({new_game_id}, {white_player}, {black_player}, {new_game_state}, {message_id}, 0)
         """)
+        return new_board
