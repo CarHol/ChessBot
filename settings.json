@@ -3,10 +3,6 @@
     "callsign": "chess",
     "commands": {
         "new_game_open": "newgame",
-        "new_game_challenge": "challenge",
-        "as_white": "aswhite",
-        "as_black": "asblack",
-        "as_random": "asrandom",
-        "as_both": "asboth"
+        "new_game_challenge": "challenge"
     }
 }

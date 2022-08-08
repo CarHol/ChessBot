@@ -3,9 +3,11 @@ import os
 import dbfactory
 import discord
 import chess
+import re
 from settings import get_settings
 from dotenv import load_dotenv
 from dbfactory import get_db
+import chess_db
 
 # Environment and client
 load_dotenv()
@@ -64,22 +66,33 @@ async def on_message(message):
         # Start new game, either open (first to join gets second role) or challenge (specify player)
         
         if commands["new_game_challenge"] in message.content:
-            print(message.author.mention)
-            print(message.content)
-            print(message.id)
+            print("Received challenge")
+            challengee_pattern = r"<@\d+>"
+            challengee_matches = re.findall(challengee_pattern, message.content)
+            if len(challengee_matches) == 0:
+                print("No challengee")
+                return # Todo: show error message
+            
+            # Todo: allow only one game mode
+            mode_pattern = "|".join([ctype.name.lower() for ctype in chess_db.ChallengeType])
+            mode_matches = re.findall(mode_pattern, message.content.lower())
+            if not len(mode_matches):
+                print("No valid mode")
+                return
+            mode = chess_db.ChallengeType[mode_matches[0].upper()].value
 
-        if commands["new_game_open"] in message.content:
+            challengee = challengee_matches[0]
+            challenger = message.author.mention
+            
+            channel = message.channel
+            new_message = await channel.send(f"{challenger} challenges {challengee} to a game. Accept?")
+            chess_db.new_challenge(new_message, challenger, challengee, mode)
+
+        #if commands["new_game_open"] in message.content:
             #opponent = message.mentions[0]
         # As experiment, just add new game
         #board = chess.Board()
         #player
-
-# Useful for later (detecting responses)
-def check(m):
-   if m.reference is not None:
-        if m.reference.message_id = some_msg.id
-            return True
-   return False
 
 @client.event
 async def on_ready():

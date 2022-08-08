@@ -15,8 +15,7 @@ def setup_tables(dbpath):
                 WhitePlayer TEXT NOT NULL,
                 BlackPlayer TEXT NOT NULL,
                 GameState TEXT NOT NULL,
-                LastMessageId TEXT NOT NULL UNIQUE,
-                Round INTEGER NOT NULL
+                LastMessageId TEXT NOT NULL UNIQUE
             );
         """)
 
@@ -25,7 +24,8 @@ def setup_tables(dbpath):
             CREATE TABLE CHALLENGES (
                 Id TEXT NOT NULL PRIMARY KEY,
                 Challenger TEXT NOT NULL,
-                Opponent TEXT
+                Challengee TEXT,
+                ChallengeType INTEGER NOT NULL
             );
         """)
 
