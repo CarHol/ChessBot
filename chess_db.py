@@ -61,6 +61,16 @@ def new_challenge(message_id, challenger, challengee, challenge_type):
         """, data)
     db.close()
 
+def delete_challenge(message_id):
+    db = get_db()
+    with db:
+        cur = db.cursor()
+        cur.execute(f"""
+            DELETE FROM CHALLENGES WHERE Id='{message_id}'
+        """)
+    
+    db.close()
+
 def new_game_from_challenge(old_message_id, new_message_id):
     db = get_db()
     print(old_message_id)
@@ -90,4 +100,5 @@ def new_game_from_challenge(old_message_id, new_message_id):
         board = new_game(new_message_id, white_player, black_player)
 
     db.close()
+    delete_challenge(old_message_id)
     return (board, white_player, black_player)
