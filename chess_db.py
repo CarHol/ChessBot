@@ -10,7 +10,9 @@ challenge_type = {
     "ASRANDOM": 2
 }
 
-def game_exists(message_id):
+
+
+def get_games(message_id):
     # Todo: make sure the id has a valid format
     db = get_db()
     with db:
@@ -20,7 +22,11 @@ def game_exists(message_id):
         """)
         data = cur.fetchall()
     db.close()
-    return len(data) > 0
+    return data
+
+def game_exists(message_id):
+    data = get_games(message_id)
+    return data is not None and len(data) > 0
 
 def get_challenge(message_id):
     db = get_db()
@@ -33,6 +39,21 @@ def get_challenge(message_id):
     db.close()
 
     return res
+
+def update_game(game_id, game_state, new_message_id):
+    db = get_db()
+    with db:
+        data = (game_state, new_message_id, game_id)
+        cur = db.cursor()
+        cur.execute(f"""
+            UPDATE GAMES
+            SET GameState = ?,
+                LastMessageId = ?
+            WHERE
+                Id = ?
+        """, data)
+        rows_affected = cur.rowcount
+    return rows_affected == 1
 
 def new_game(message_id, white_player, black_player):
     new_game_id = str(uuid.uuid1())

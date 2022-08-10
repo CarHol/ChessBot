@@ -14,6 +14,7 @@ from cairosvg import svg2png
 
 from settings import get_settings
 import chess_db
+import chess_controller
 
 # Environment and client
 load_dotenv()
@@ -68,41 +69,27 @@ async def on_message(message):
     # Play the move on the parsed game state and save the new game state and message id to the db.
     # Update the message with a render of the new board state and tag the next player
     if message.reference is not None and message.reference.resolved:
-        ref_id = message.reference.message_id
-        challenge = chess_db.get_challenge(ref_id)
-        if challenge is None:
-            return
-        
-        # Message is a response to a challenge, make sure it's the right responder
-        challenge_id, challenger, challengee, challenge_type = challenge
-        if message.author.mention != challengee:
-            print("Invalid responder")
-            return
-        
-        # Check for the right keyword
-        if commands["accept_challenge"] not in message.content:
-            print("Invalid command")
-            return
-        
-        # Create a new game from the request
-        channel = message.channel
-        #new_message = await channel.send(f"Creating game...")
+        # Is it a response to a challenge?
+        if commands["accept_challenge"] in message.content:
+            try:
+                await chess_controller.handle_challenge_reponse(message, client)
+            except:
+                return
 
-        
-        # Initial board layout is always the same, so use a pre-loaded one:
-        file = discord.File("init_board.png", filename="board.png")
-        embed = discord.Embed()
-        embed.set_image(url="attachment://board.png")
-
-        new_message = await channel.send(file=file, embed=embed, content='Creating game...')
-        new_message_id = new_message.id
-        game = chess_db.new_game_from_challenge(challenge_id, new_message_id)
-        if game is None:
-            await new_message.edit(content='Failed to create game.')
+        # Check if the message responded to is connected to an ongoing game
+        if not chess_controller.is_valid_game_response(message, client):
+            print("Received false")
             return
-        board, white_player, black_player = game
-        
-        await new_message.edit(content=chess_lang.game_created(white_player, black_player))
+
+        print("Received true")
+        # If it is, attempt to register the response
+        try:
+            print("Entering controller")
+            await chess_controller.play_move(message, client)
+        except:
+            # Todo: handle gracefully
+            return
+
 
     # Parse intent
     if message.content.startswith(f"!{callsign}"):
