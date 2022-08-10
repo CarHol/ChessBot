@@ -59,7 +59,9 @@ def new_challenge(message_id, challenger, challengee, challenge_type):
             INSERT INTO CHALLENGES (Id, Challenger, Challengee, ChallengeType) 
             values(?,?,?,?)
         """, data)
+        success = cur.rowcount == 1
     db.close()
+    return success
 
 def delete_challenge(message_id):
     db = get_db()

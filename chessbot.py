@@ -3,7 +3,9 @@ import os
 import dbfactory
 import discord
 import chess
+import chess.svg
 import re
+import chess_lang
 from settings import get_settings
 from dotenv import load_dotenv
 from dbfactory import get_db
@@ -87,7 +89,9 @@ async def on_message(message):
             return
 
         board, white_player, black_player = game
-        await new_message.edit(content=f"{board}\n\n{white_player} to move.")
+        board_model = chess.Board(board)
+
+        await new_message.edit(content=chess_lang.game_created(white_player, black_player, board))
 
 
     # Parse intent
@@ -114,10 +118,14 @@ async def on_message(message):
             challenger = message.author.mention
             
             channel = message.channel
-            new_message = await channel.send(f"{challenger} challenges {challengee} to a game. Accept?")
-            chess_db.new_challenge(new_message.id, challenger, challengee, mode)
-            print(new_message.id)
-            print()
+            new_message = await channel.send(f"Please wait...")
+            success = chess_db.new_challenge(new_message.id, challenger, challengee, mode)
+            response_str = chess_lang.accept_challenge_prompt(challenger, challengee) \
+                if success \
+                else "Could not create challenge"
+            await new_message.edit(
+                content=response_str
+            )
 
         #if commands["new_game_open"] in message.content:
             #opponent = message.mentions[0]
