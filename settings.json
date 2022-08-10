@@ -3,6 +3,7 @@
     "callsign": "chess",
     "commands": {
         "new_game_open": "newgame",
-        "new_game_challenge": "challenge"
+        "new_game_challenge": "challenge",
+        "accept_challenge": "accept"
     }
 }

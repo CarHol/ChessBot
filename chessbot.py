@@ -58,6 +58,34 @@ async def on_message(message):
     # If the move is legal, send a temporary message ("Playing move...") and note the id
     # Play the move on the parsed game state and save the new game state and message id to the db.
     # Update the message with a render of the new board state and tag the next player
+    if message.reference is not None and message.reference.resolved:
+        ref_id = message.reference.message_id
+        challenge = chess_db.get_challenge(ref_id)
+        if challenge is None:
+            return
+        
+        # Message is a response to a challenge, make sure it's the right responder
+        challenge_id, challenger, challengee, challenge_type = challenge
+        if message.author.mention != challengee:
+            print("Invalid responder")
+            return
+        
+        # Check for the right keyword
+        if commands["accept_challenge"] not in message.content:
+            print("Invalid command")
+            return
+        
+        # Create a new game from the request
+        new_message = await message.channel.send(f"Creating game...")
+        new_message_id = new_message.id
+        game = chess_db.new_game_from_challenge(challenge_id, new_message_id)
+        if game is None:
+            await new_message.edit(content='Failed to create game.')
+            return
+
+        board, white_player, black_player = game
+        await new_message.edit(content=f"{board}\n\n{white_player} to move.")
+
 
     # Parse intent
     if message.content.startswith(f"!{callsign}"):
@@ -74,19 +102,22 @@ async def on_message(message):
                 return # Todo: show error message
             
             # Todo: allow only one game mode
-            mode_pattern = "|".join([ctype.name.lower() for ctype in chess_db.ChallengeType])
+            mode_pattern = "|".join([key.lower() for key in chess_db.challenge_type.keys()])
+            print(mode_pattern)
             mode_matches = re.findall(mode_pattern, message.content.lower())
             if not len(mode_matches):
                 print("No valid mode")
                 return
-            mode = chess_db.ChallengeType[mode_matches[0].upper()].value
+            mode = chess_db.challenge_type[mode_matches[0].upper()]
 
             challengee = challengee_matches[0]
             challenger = message.author.mention
             
             channel = message.channel
             new_message = await channel.send(f"{challenger} challenges {challengee} to a game. Accept?")
-            chess_db.new_challenge(new_message, challenger, challengee, mode)
+            chess_db.new_challenge(new_message.id, challenger, challengee, mode)
+            print(new_message.id)
+            print()
 
         #if commands["new_game_open"] in message.content:
             #opponent = message.mentions[0]
