@@ -4,11 +4,15 @@ import dbfactory
 import discord
 import chess
 import chess.svg
+
 import re
 import chess_lang
-from settings import get_settings
+
 from dotenv import load_dotenv
 from dbfactory import get_db
+from cairosvg import svg2png
+
+from settings import get_settings
 import chess_db
 
 # Environment and client
@@ -81,18 +85,24 @@ async def on_message(message):
             return
         
         # Create a new game from the request
-        new_message = await message.channel.send(f"Creating game...")
+        channel = message.channel
+        #new_message = await channel.send(f"Creating game...")
+
+        
+        # Initial board layout is always the same, so use a pre-loaded one:
+        file = discord.File("init_board.png", filename="board.png")
+        embed = discord.Embed()
+        embed.set_image(url="attachment://board.png")
+
+        new_message = await channel.send(file=file, embed=embed, content='Creating game...')
         new_message_id = new_message.id
         game = chess_db.new_game_from_challenge(challenge_id, new_message_id)
         if game is None:
             await new_message.edit(content='Failed to create game.')
             return
-
         board, white_player, black_player = game
-        board_model = chess.Board(board)
-
-        await new_message.edit(content=chess_lang.game_created(white_player, black_player, board))
-
+        
+        await new_message.edit(content=chess_lang.game_created(white_player, black_player))
 
     # Parse intent
     if message.content.startswith(f"!{callsign}"):
