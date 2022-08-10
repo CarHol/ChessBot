@@ -73,7 +73,6 @@ def delete_challenge(message_id):
 
 def new_game_from_challenge(old_message_id, new_message_id):
     db = get_db()
-    print(old_message_id)
     with db:
         cur = db.cursor()
         cur.execute(f"""

@@ -19,6 +19,9 @@ settings = get_settings()
 commands = settings["commands"]
 callsign = settings["callsign"]
 
+# Patterns
+mode_pattern = "|".join([key.lower() for key in chess_db.challenge_type.keys()])
+
 # Storage
 db = get_db()
 
@@ -94,7 +97,6 @@ async def on_message(message):
         # Start new game, either open (first to join gets second role) or challenge (specify player)
         
         if commands["new_game_challenge"] in message.content:
-            print("Received challenge")
             challengee_pattern = r"<@\d+>"
             challengee_matches = re.findall(challengee_pattern, message.content)
             if len(challengee_matches) == 0:
@@ -102,8 +104,6 @@ async def on_message(message):
                 return # Todo: show error message
             
             # Todo: allow only one game mode
-            mode_pattern = "|".join([key.lower() for key in chess_db.challenge_type.keys()])
-            print(mode_pattern)
             mode_matches = re.findall(mode_pattern, message.content.lower())
             if not len(mode_matches):
                 print("No valid mode")
