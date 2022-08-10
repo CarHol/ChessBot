@@ -45,18 +45,11 @@ async def handle_challenge_reponse(message, client):
     await new_message.edit(content=chess_lang.game_created(white_player, black_player))
 
 def is_valid_game_response(message, client):
-    #Id TEXT NOT NUL
-    #WhitePlayer TEX
-    #BlackPlayer TEX
-    #GameState TEXT 
-    #LastMessageId T
     ref_id = message.reference.message_id
     existing_game = chess_db.get_games(ref_id)
     
     if len(existing_game) == 0:
         return
-    print(existing_game)
-    print()
     _, white_player, black_player, game_state, _ = existing_game[0]
     board = chess.Board(game_state)
     is_white_turn = board.turn
