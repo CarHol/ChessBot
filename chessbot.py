@@ -78,13 +78,10 @@ async def on_message(message):
 
         # Check if the message responded to is connected to an ongoing game
         if not chess_controller.is_valid_game_response(message, client):
-            print("Received false")
             return
 
-        print("Received true")
         # If it is, attempt to register the response
         try:
-            print("Entering controller")
             await chess_controller.play_move(message, client)
         except:
             # Todo: handle gracefully
