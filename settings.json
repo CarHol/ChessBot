@@ -4,6 +4,9 @@
     "commands": {
         "new_game_open": "newgame",
         "new_game_challenge": "challenge",
-        "accept_challenge": "accept"
+        "accept_challenge": "accept",
+        "resign": "resign",
+        "offer_draw": "draw?",
+        "accept_draw": "accept"
     }
 }

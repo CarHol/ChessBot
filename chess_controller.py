@@ -12,6 +12,7 @@ from dbfactory import get_db
 from cairosvg import svg2png
 
 from settings import get_settings
+commands = get_settings()["commands"]
 import chess_db
 
 async def handle_challenge_reponse(message, client):
@@ -50,38 +51,72 @@ def is_valid_game_response(message, client):
     
     if len(existing_game) == 0:
         return
-    _, white_player, black_player, game_state, _ = existing_game[0]
+    _, white_player, black_player, game_state, _, draw_offered = existing_game[0]
     board = chess.Board(game_state)
     is_white_turn = board.turn
-    return message.author.mention == white_player and is_white_turn \
-        or message.author.mention == black_player and not is_white_turn
+    responder = message.author.mention
+    is_player = responder == white_player or responder == black_player
+    responders_turn = responder == white_player and is_white_turn or responder == black_player and not is_white_turn
+    return is_player and (responders_turn or bool(draw_offered))
 
 async def play_move(message, client):
+
     channel = message.channel
     player = message.author.mention
     message_id = message.id
     ref_id = message.reference.message_id
     game = chess_db.get_games(ref_id)[0]
-    game_id, white_player, black_player, game_state, _ = game
+    game_id, white_player, black_player, game_state, _, draw_offered = game
     board = chess.Board(game_state)
-    
-    # Double check that it's actually the player's turn
     is_white_turn = board.turn
-    if is_white_turn and player != white_player or not is_white_turn and player != black_player:
-        raise WrongTurnException("Not your turn!")
-
     opponent, opponent_color = (black_player, "black") if is_white_turn else (white_player, "white")
+
+    # Double check that it's actually the player's turn, or a draw has been offered
+    is_player = player == white_player or player == black_player
+    if not is_player:
+        return
+
+    # Is the move played a resignation (can be made at any time)?
+    if commands["resign"] in message.content:
+        await channel.send(f"{player} resigned - {opponent} won.")
+        # Delete the existing game
+        delete_success = chess_db.end_game(ref_id)
+        return
+
+    
+    players_turn = player == white_player and is_white_turn or player == black_player and not is_white_turn
+    if not players_turn and not bool(draw_offered):
+        print("No valid command")
+        return # Ignore
+
+
+    # Is the move an accepted draw?
+    # A more convoluted truth statement, but makes it possible to play yourself and offer draw (useful for debugging)
+    if commands["accept_draw"] in message.content and bool(draw_offered) and (player == black_player and is_white_turn \
+            or player == white_player and not is_white_turn):
+        draw_success = chess_db.end_game(ref_id)
+        response_str = chess_lang.game_ends_in_draw() if draw_success else game_end_technical_failure()
+        await channel.send(response_str)
+        return
+
+    # Is the move played an offered draw?
+    if commands["offer_draw"] in message.content:
+        new_message = await channel.send("Offering draw...")
+        new_message_id = new_message.id
+        offer_success = chess_db.set_offered_draw(ref_id, new_message_id)
+        response_msg = chess_lang.offer_draw(player, opponent) if offer_success else chess_lang.offer_draw_technical_error()
+        await new_message.edit(content=response_msg)
+        return
+
 
     # Check that the move can be parsed
     try:
         move = chess.Move.from_uci(message.content)
     except:
         raise MalformedMoveException("Move cannot be parsed")
-        print("Could not print move")
 
     # Check that the move is legal
     if move not in board.legal_moves:
-        print("Illegal move")
         raise IllegalMoveException("Illegal move")
 
     # Place the move and generate a new image

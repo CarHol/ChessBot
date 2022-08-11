@@ -11,7 +11,6 @@ challenge_type = {
 }
 
 
-
 def get_games(message_id):
     # Todo: make sure the id has a valid format
     db = get_db()
@@ -23,6 +22,21 @@ def get_games(message_id):
         data = cur.fetchall()
     db.close()
     return data
+
+def set_offered_draw(old_message_id, new_message_id):
+    db = get_db()
+    with db:
+        data = (new_message_id, old_message_id)
+        cur = db.cursor()
+        cur.execute(f"""
+            UPDATE GAMES
+            SET LastMessageId = ?,
+                OfferedDraw = 1
+            WHERE
+                LastMessageId = ?
+        """, data)
+        rows_affected = cur.rowcount
+    return rows_affected == 1
 
 def game_exists(message_id):
     data = get_games(message_id)
@@ -62,11 +76,11 @@ def new_game(message_id, white_player, black_player):
 
     db = get_db()
     with db:
-        data = (new_game_id, white_player, black_player, new_game_state, message_id)
+        data = (new_game_id, white_player, black_player, new_game_state, message_id, 0)
         cur = db.cursor()
         cur.execute(f"""
-            INSERT INTO GAMES (Id, WhitePlayer, BlackPlayer, GameState, LastMessageId) 
-            values(?, ?, ?, ?, ?)
+            INSERT INTO GAMES (Id, WhitePlayer, BlackPlayer, GameState, LastMessageId, OfferedDraw) 
+            values(?, ?, ?, ?, ?, ?)
         """, data)
     db.close()
     return new_board
@@ -93,6 +107,17 @@ def delete_challenge(message_id):
         """)
     
     db.close()
+
+def end_game(message_id):
+    db = get_db()
+    with db:
+        cur = db.cursor()
+        cur.execute(f"""
+            DELETE FROM GAMES WHERE LastMessageId='{message_id}'
+        """)
+        success = cur.rowcount == 1
+    db.close()
+    return success
 
 def new_game_from_challenge(old_message_id, new_message_id):
     db = get_db()

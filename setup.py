@@ -15,7 +15,8 @@ def setup_tables(dbpath):
                 WhitePlayer TEXT NOT NULL,
                 BlackPlayer TEXT NOT NULL,
                 GameState TEXT NOT NULL,
-                LastMessageId TEXT NOT NULL UNIQUE
+                LastMessageId TEXT NOT NULL UNIQUE,
+                OfferedDraw INTEGER NOT NULL
             );
         """)
 
