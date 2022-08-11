@@ -124,10 +124,22 @@ async def play_move(message, client):
     if move not in board.legal_moves:
         raise IllegalMoveException("Illegal move")
 
-    # Place the move and generate a new image
+    # Place the move
     board.push(move)
+
+    # Check if game over:
+    is_check = board.is_check()
+    is_checkmate = board.is_checkmate()
+    is_stalemate = board.is_stalemate()
+
+    # Generate new image
+    print("Played move")
+    opponent_king = board.king(chess.WHITE if opponent_color == "white" else chess.BLACK)
+    print("Got king")
+    board_svg = chess.svg.board(board, lastmove=move, check=opponent_king if is_check or is_checkmate else None)
+    print("Got svg")
     filename = f"output_{message_id}.png"
-    svg2png(bytestring=chess.svg.board(board, lastmove=move),write_to=filename, scale=2)
+    svg2png(bytestring=board_svg,write_to=filename, scale=2)
     if not os.path.exists(filename):
         raise ImageExportException("Could not generate image")
 
@@ -135,9 +147,7 @@ async def play_move(message, client):
     embed = discord.Embed()
     embed.set_image(url="attachment://board.png")
 
-    # Check if game over:
-    is_checkmate = board.is_checkmate()
-    is_stalemate = board.is_stalemate()
+    
 
     # Display the new state
     new_message = await channel.send(file=file, embed=embed, content='Playing move...')
