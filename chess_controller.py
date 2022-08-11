@@ -141,14 +141,16 @@ async def play_move(message, client):
     # Handle checkmates or stalemates
     if is_checkmate:
         print("Stalemate")
-        checkmate_desc = chess_lang.checkmate_desc(player)
+        end_success = chess_db.end_game(ref_id)
+        checkmate_desc = chess_lang.checkmate_desc(player) if end_success else chess_lang.game_end_technical_failure()
         os.remove(filename)
         await new_message.edit(content=checkmate_desc)
         return 
     
     if is_stalemate:
         print("Checkmate")
-        stalemate_desc = chess_lang.stalemate_desc(player)
+        end_success = chess_db.end_game(ref_id)
+        stalemate_desc = chess_lang.stalemate_desc(player) if end_success else chess_lang.game_end_technical_failure()
         os.remove(filename)
         await new_message.edit(content=stalemate_desc)
         return
