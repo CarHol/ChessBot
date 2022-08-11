@@ -133,11 +133,8 @@ async def play_move(message, client):
     is_stalemate = board.is_stalemate()
 
     # Generate new image
-    print("Played move")
     opponent_king = board.king(chess.WHITE if opponent_color == "white" else chess.BLACK)
-    print("Got king")
     board_svg = chess.svg.board(board, lastmove=move, check=opponent_king if is_check or is_checkmate else None)
-    print("Got svg")
     filename = f"output_{message_id}.png"
     svg2png(bytestring=board_svg,write_to=filename, scale=2)
     if not os.path.exists(filename):
