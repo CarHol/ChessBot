@@ -6,6 +6,7 @@ import chess.svg
 
 import re
 import chess_lang
+import chess_db
 
 from dotenv import load_dotenv
 from dbfactory import get_db
@@ -13,12 +14,12 @@ from cairosvg import svg2png
 
 from settings import get_settings
 commands = get_settings()["commands"]
-import chess_db
 
 # Patterns
 mode_pattern = "|".join([key.lower() for key in chess_db.challenge_type.keys()])
 challengee_pattern = r"<@\d+>"
 
+# Endpoints
 async def handle_challenge_reponse(message, client):
     ref_id = message.reference.message_id
     challenge = chess_db.get_challenge(ref_id)
