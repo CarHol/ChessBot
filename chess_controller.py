@@ -126,7 +126,7 @@ async def play_move(message, client):
     # Place the move and generate a new image
     board.push(move)
     filename = f"output_{message_id}.png"
-    svg2png(bytestring=chess.svg.board(board),write_to=filename, scale=2)
+    svg2png(bytestring=chess.svg.board(board, lastmove=move),write_to=filename, scale=2)
     if not os.path.exists(filename):
         raise ImageExportException("Could not generate image")
 
