@@ -15,6 +15,10 @@ from settings import get_settings
 commands = get_settings()["commands"]
 import chess_db
 
+# Patterns
+mode_pattern = "|".join([key.lower() for key in chess_db.challenge_type.keys()])
+challengee_pattern = r"<@\d+>"
+
 async def handle_challenge_reponse(message, client):
     ref_id = message.reference.message_id
     challenge = chess_db.get_challenge(ref_id)
@@ -140,7 +144,6 @@ async def play_move(message, client):
 
     # Handle checkmates or stalemates
     if is_checkmate:
-        print("Stalemate")
         end_success = chess_db.end_game(ref_id)
         checkmate_desc = chess_lang.checkmate_desc(player) if end_success else chess_lang.game_end_technical_failure()
         os.remove(filename)
@@ -148,7 +151,6 @@ async def play_move(message, client):
         return 
     
     if is_stalemate:
-        print("Checkmate")
         end_success = chess_db.end_game(ref_id)
         stalemate_desc = chess_lang.stalemate_desc(player) if end_success else chess_lang.game_end_technical_failure()
         os.remove(filename)
@@ -166,6 +168,32 @@ async def play_move(message, client):
     await new_message.edit(content=played_move_desc)
     os.remove(filename)
 
+async def new_game_challenge(message, client):
+    
+    challengee_matches = re.findall(challengee_pattern, message.content)
+    if len(challengee_matches) == 0:
+        print("No challengee")
+        return # Todo: show error message
+        
+    # Todo: allow only one game mode
+    mode_matches = re.findall(mode_pattern, message.content.lower())
+    if not len(mode_matches):
+        print("No valid mode")
+        return
+    mode = chess_db.challenge_type[mode_matches[0].upper()]
+
+    challengee = challengee_matches[0]
+    challenger = message.author.mention
+    
+    channel = message.channel
+    new_message = await channel.send(f"Please wait...")
+    success = chess_db.new_challenge(new_message.id, challenger, challengee, mode)
+    response_str = chess_lang.accept_challenge_prompt(challenger, challengee) \
+        if success \
+        else "Could not create challenge"
+    await new_message.edit(
+        content=response_str
+    )
 
 # Exceptions
 class IllegalMoveException(Exception):

@@ -26,9 +26,6 @@ settings = get_settings()
 commands = settings["commands"]
 callsign = settings["callsign"]
 
-# Patterns
-mode_pattern = "|".join([key.lower() for key in chess_db.challenge_type.keys()])
-
 # Storage
 db = get_db()
 
@@ -83,31 +80,7 @@ async def on_message(message):
         # Start new game, either open (first to join gets second role) or challenge (specify player)
         
         if commands["new_game_challenge"] in message.content:
-            challengee_pattern = r"<@\d+>"
-            challengee_matches = re.findall(challengee_pattern, message.content)
-            if len(challengee_matches) == 0:
-                print("No challengee")
-                return # Todo: show error message
-            
-            # Todo: allow only one game mode
-            mode_matches = re.findall(mode_pattern, message.content.lower())
-            if not len(mode_matches):
-                print("No valid mode")
-                return
-            mode = chess_db.challenge_type[mode_matches[0].upper()]
-
-            challengee = challengee_matches[0]
-            challenger = message.author.mention
-            
-            channel = message.channel
-            new_message = await channel.send(f"Please wait...")
-            success = chess_db.new_challenge(new_message.id, challenger, challengee, mode)
-            response_str = chess_lang.accept_challenge_prompt(challenger, challengee) \
-                if success \
-                else "Could not create challenge"
-            await new_message.edit(
-                content=response_str
-            )
+            await chess_controller.new_game_challenge(message,client)
 
         #if commands["new_game_open"] in message.content:
             #opponent = message.mentions[0]
