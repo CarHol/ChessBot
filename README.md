@@ -12,6 +12,7 @@ In place of a move you can also respond `resign` to resign the game, or `draw?` 
 
 ## Features still in progress
 - Buttons for more intuitive interactions when accepting challenges, draws or resignations.
+- Slash command in place of !chess token
 - Stockfish integration
 - Cleaner separation between Discord callbacks and game logic
 - Multi-round matches
