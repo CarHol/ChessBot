@@ -7,6 +7,7 @@ import chess.svg
 import re
 import chess_lang
 import chess_db
+import discord_utils
 
 from dotenv import load_dotenv
 from dbfactory import get_db
@@ -20,16 +21,21 @@ mode_pattern = "|".join([key.lower() for key in chess_db.challenge_type.keys()])
 challengee_pattern = r"<@\d+>"
 
 # Endpoints
-async def handle_challenge_reponse(message, client):
+async def handle_challenge_reponse(message, client, verbose = 0):
     ref_id = message.reference.message_id
-    challenge = chess_db.get_challenge(ref_id)
+    try:
+        challenge = chess_db.get_challenge(ref_id)
+    except:
+        verbose > 0 and print(f"Could not get challenge by ref id {ref_id}")
+        raise Exception("Could not get challenge by ref id")
     if challenge is None:
         return
     
     # Message is a response to a challenge, make sure it's the right responder
+    responder_id = discord_utils.mention_to_id(message.author.mention)
     challenge_id, challenger, challengee, challenge_type = challenge
-    if message.author.mention != challengee:
-        print("Invalid responder")
+    if responder_id != challengee:
+        verbose > 0 and print(f"Invalid responder - challengee is {challengee} and responder is {responder_id}")
         return
     
     # Create a new game from the request
@@ -42,7 +48,11 @@ async def handle_challenge_reponse(message, client):
 
     new_message = await channel.send(file=file, embed=embed, content='Creating game...')
     new_message_id = new_message.id
-    game = chess_db.new_game_from_challenge(challenge_id, new_message_id)
+    try:
+        game = chess_db.new_game_from_challenge(challenge_id, new_message_id)
+    except:
+        verbose > 0 and print("Could not create new game from challenge")
+        raise Exception("Could not create new game from challenge")
     if game is None:
         await new_message.edit(content='Failed to create game.')
         return
@@ -50,7 +60,7 @@ async def handle_challenge_reponse(message, client):
     
     await new_message.edit(content=chess_lang.game_created(white_player, black_player))
 
-def is_valid_game_response(message, client):
+def is_valid_game_response(message, client, verbose=0):
     ref_id = message.reference.message_id
     existing_game = chess_db.get_games(ref_id)
     
@@ -59,15 +69,15 @@ def is_valid_game_response(message, client):
     _, white_player, black_player, game_state, _, draw_offered = existing_game[0]
     board = chess.Board(game_state)
     is_white_turn = board.turn
-    responder = message.author.mention
+    responder = discord_utils.mention_to_id(message.author.mention)
     is_player = responder == white_player or responder == black_player
     responders_turn = responder == white_player and is_white_turn or responder == black_player and not is_white_turn
     return is_player and (responders_turn or bool(draw_offered))
 
-async def play_move(message, client):
+async def play_move(message, client, verbose=0):
 
     channel = message.channel
-    player = message.author.mention
+    player = discord_utils.mention_to_id(message.author.mention)
     message_id = message.id
     ref_id = message.reference.message_id
     game = chess_db.get_games(ref_id)[0]
@@ -83,7 +93,7 @@ async def play_move(message, client):
 
     # Is the move played a resignation (can be made at any time)?
     if commands["resign"] in message.content:
-        await channel.send(f"{player} resigned - {opponent} won.")
+        await channel.send(chess_lang.game_end_by_resignation(player, opponent))
         # Delete the existing game
         delete_success = chess_db.end_game(ref_id)
         return
@@ -91,16 +101,15 @@ async def play_move(message, client):
     
     players_turn = player == white_player and is_white_turn or player == black_player and not is_white_turn
     if not players_turn and not bool(draw_offered):
-        print("No valid command")
+        verbose > 0 and print("No valid command")
         return # Ignore
-
 
     # Is the move an accepted draw?
     # A more convoluted truth statement, but makes it possible to play yourself and offer draw (useful for debugging)
     if commands["accept_draw"] in message.content and bool(draw_offered) and (player == black_player and is_white_turn \
             or player == white_player and not is_white_turn):
         draw_success = chess_db.end_game(ref_id)
-        response_str = chess_lang.game_ends_in_draw() if draw_success else game_end_technical_failure()
+        response_str = chess_lang.game_ends_in_draw() if draw_success else chess_lang.game_end_technical_failure()
         await channel.send(response_str)
         return
 
@@ -118,10 +127,12 @@ async def play_move(message, client):
     try:
         move = chess.Move.from_uci(message.content)
     except:
+        verbose > 0 and print(f"Move {message.content} could not be parsed")
         raise MalformedMoveException("Move cannot be parsed")
 
     # Check that the move is legal
     if move not in board.legal_moves:
+        verbose > 0 and print(f"Illegal move {message.content}")
         raise IllegalMoveException("Illegal move")
 
     # Place the move
@@ -138,13 +149,12 @@ async def play_move(message, client):
     filename = f"output_{message_id}.png"
     svg2png(bytestring=board_svg,write_to=filename, scale=2)
     if not os.path.exists(filename):
+        verbose > 0 and print("Could not generate image for board state {board}")
         raise ImageExportException("Could not generate image")
 
     file = discord.File(filename, filename="board.png")
     embed = discord.Embed()
     embed.set_image(url="attachment://board.png")
-
-    
 
     # Display the new state
     new_message = await channel.send(file=file, embed=embed, content='Playing move...')
@@ -156,7 +166,7 @@ async def play_move(message, client):
         checkmate_desc = chess_lang.checkmate_desc(player) if end_success else chess_lang.game_end_technical_failure()
         os.remove(filename)
         await new_message.edit(content=checkmate_desc)
-        return 
+        return
     
     if is_stalemate:
         end_success = chess_db.end_game(ref_id)
@@ -169,29 +179,30 @@ async def play_move(message, client):
     db_success = chess_db.update_game(game_id, board.fen(), new_message_id)
     if not db_success:
         os.remove(filename)
-        print("Could not update db")
+        verbose > 0 and print("Could not update db")
         await new_message.edit(content="DB error, could not play move", file=None)
     
     played_move_desc = chess_lang.next_turn(player, opponent, "black" if is_white_turn else "white", message.content)
     await new_message.edit(content=played_move_desc)
     os.remove(filename)
 
-async def new_game_challenge(message, client):
+async def new_game_challenge(message, client, verbose = 0):
     
-    challengee_matches = re.findall(challengee_pattern, message.content)
+    #challengee_matches = re.findall(challengee_pattern, message.content)
+    challengee_matches = discord_utils.find_mention_id(message.content)
     if len(challengee_matches) == 0:
-        print("No challengee")
+        verbose > 0 and print("No challengee")
         return # Todo: show error message
         
     # Todo: allow only one game mode
     mode_matches = re.findall(mode_pattern, message.content.lower())
     if not len(mode_matches):
-        print("No valid mode")
+        verbose > 0 and print("No valid mode")
         return
     mode = chess_db.challenge_type[mode_matches[0].upper()]
 
     challengee = challengee_matches[0]
-    challenger = message.author.mention
+    challenger = discord_utils.mention_to_id(message.author.mention)
     
     channel = message.channel
     new_message = await channel.send(f"Please wait...")

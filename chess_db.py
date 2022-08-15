@@ -69,10 +69,15 @@ def update_game(game_id, game_state, new_message_id):
         rows_affected = cur.rowcount
     return rows_affected == 1
 
-def new_game(message_id, white_player, black_player):
+def new_game(message_id, white_player, black_player, verbose=0):
     new_game_id = str(uuid.uuid1())
     new_board = chess.Board()
     new_game_state = new_board.fen()
+
+    if verbose > 1:
+        print(f"New game ID: {new_game_id}")
+        print(f"New game board:\n{new_board}")
+        print(f"New game state:\n{new_game_state}")
 
     db = get_db()
     with db:
@@ -105,8 +110,10 @@ def delete_challenge(message_id):
         cur.execute(f"""
             DELETE FROM CHALLENGES WHERE Id='{message_id}'
         """)
+        success = cur.rowcount == 1
     
     db.close()
+    return success
 
 def end_game(message_id):
     db = get_db()
@@ -119,20 +126,24 @@ def end_game(message_id):
     db.close()
     return success
 
-def new_game_from_challenge(old_message_id, new_message_id):
+def new_game_from_challenge(old_message_id, new_message_id, verbose=0):
     db = get_db()
     with db:
         cur = db.cursor()
-        cur.execute(f"""
-            SELECT * FROM CHALLENGES WHERE Id='{old_message_id}'
-        """)
-        res =  cur.fetchone()
-
+        try:
+            cur.execute(f"""
+                SELECT * FROM CHALLENGES WHERE Id='{old_message_id}'
+            """)
+            res =  cur.fetchone()
+        except:
+            print("Could not fetch from db")
         if not res:
-            print("No challenge found")
+            verbose > 0 and print("No challenge found")
             return res
         
         _, challenger, challengee, game_mode = res
+        verbose > 1 and print(f"Extracted data from result {res}")
+
 
         if game_mode == challenge_type["ASWHITE"]:
             white_player = challenger
@@ -142,10 +153,18 @@ def new_game_from_challenge(old_message_id, new_message_id):
             black_player = challenger
         elif game_mode == challenge_type["ASRANDOM"]:
             challenger_white = bool(random.getrandbits(1))
-            white_player, black_player = (challenger, challengee) if challenger_white else (challenge, challenger)
+            white_player, black_player = (challenger, challengee) if challenger_white else (challengee, challenger)
 
-        board = new_game(new_message_id, white_player, black_player)
+        verbose > 1 and print(f"Set color white for {white_player} and black for {black_player}")
+        try:
+            board = new_game(new_message_id, white_player, black_player, verbose)
+        except:
+            print("Could not create new game after selecting color")
 
     db.close()
-    delete_challenge(old_message_id)
+    try:
+        delete_challenge_success = delete_challenge(old_message_id)
+        verbose > 1 and delete_challenge_success and print(f"Deleted challenge by message id {old_message_id}")
+    except:
+        verbose > 0 and print("Could not delete challenge")
     return (board, white_player, black_player)

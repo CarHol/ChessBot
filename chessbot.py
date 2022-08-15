@@ -1,11 +1,13 @@
 # chessbot.py
 import os
+import argparse
+import re
+
 import dbfactory
 import discord
 import chess
 import chess.svg
 
-import re
 import chess_lang
 
 from dotenv import load_dotenv
@@ -20,6 +22,11 @@ import chess_controller
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 client = discord.Client()
+
+parser = argparse.ArgumentParser(description='A simple Discord bot for playing Chess.')
+parser.add_argument('--verbose',  '--v', type=int)
+args = parser.parse_args()
+verbose = args.verbose if args.verbose is not None else 0
 
 # Settings
 settings = get_settings()
@@ -37,22 +44,25 @@ async def on_message(message):
 
     # Check if message is a response to an earlier message
     if message.reference is not None and message.reference.resolved:
-
+        print(f"Received message response: {message.content}")
         # Check if the message responded to is connected to an ongoing game
-        if chess_controller.is_valid_game_response(message, client):
+        if chess_controller.is_valid_game_response(message, client, verbose):
             # Is it a move?
             try:
-                await chess_controller.play_move(message, client)
+                await chess_controller.play_move(message, client, verbose)
             except:
+                print(f"Could not play move {message.content}")
                 # Todo: handle gracefully
                 return
             return
-
+        print("Not a valid game response")
         # Is it a response to a challenge?
+        print(f"Message '{message.content.lower()}' matches command: {commands['accept_challenge'] in message.content }")
         if commands["accept_challenge"] in message.content:
             try:
-                await chess_controller.handle_challenge_reponse(message, client)
+                await chess_controller.handle_challenge_reponse(message, client, verbose)
             except:
+                print("Could not handle challenge acceptance")
                 return
 
 
@@ -60,7 +70,7 @@ async def on_message(message):
     if message.content.startswith(f"!{callsign}"):
         
         if commands["new_game_challenge"] in message.content:
-            await chess_controller.new_game_challenge(message,client)
+            await chess_controller.new_game_challenge(message, client, verbose)
 
 @client.event
 async def on_ready():
