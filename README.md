@@ -10,6 +10,7 @@ Play a move by responding to the resulting game board posted by the bot. Moves a
 
 In place of a move you can also respond `resign` to resign the game, or `draw?` to offer a draw. Respond `accept` to the resulting draw offer to end the game in a draw. 
 
+
 ## Features still in progress
 - Buttons for more intuitive interactions when accepting challenges, draws or resignations.
 - Slash command in place of !chess token
